@@ -1,24 +1,33 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import StatusBadge from './StatusBadge';
-import { colors } from '../theme/colors';
+import { colors, shadow } from '../theme/colors';
 
-// Linha da lista: miniatura, nome, cidade e status
+// Card da lista: miniatura, nome, cidade e status
 export default function PlaceItem({ place, onPress }) {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       {place.photo ? (
         <Image source={{ uri: place.photo }} style={styles.thumb} />
       ) : (
         <View style={[styles.thumb, styles.noPhoto]}>
-          <Text style={styles.noPhotoText}>Sem foto</Text>
+          <Ionicons name="image-outline" size={28} color={colors.primary} />
         </View>
       )}
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{place.name}</Text>
-        <Text style={styles.city}>{place.city} - {place.state}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {place.name}
+        </Text>
+        <View style={styles.cityRow}>
+          <Ionicons name="location-sharp" size={14} color={colors.muted} />
+          <Text style={styles.city} numberOfLines={1}>
+            {place.city} - {place.state}
+          </Text>
+        </View>
         <StatusBadge status={place.status} />
       </View>
+      <Ionicons name="chevron-forward" size={20} color={colors.border} />
     </TouchableOpacity>
   );
 }
@@ -26,17 +35,18 @@ export default function PlaceItem({ place, onPress }) {
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 10,
+    borderRadius: 16,
     padding: 10,
-    marginHorizontal: 12,
+    marginHorizontal: 16,
     marginVertical: 6,
-    elevation: 2,
+    ...shadow,
   },
-  thumb: { width: 70, height: 70, borderRadius: 8, backgroundColor: '#ddd' },
+  thumb: { width: 82, height: 82, borderRadius: 12, backgroundColor: colors.primarySoft },
   noPhoto: { alignItems: 'center', justifyContent: 'center' },
-  noPhotoText: { fontSize: 11, color: colors.muted },
-  info: { flex: 1, marginLeft: 12, justifyContent: 'space-between' },
-  name: { fontSize: 16, fontWeight: 'bold', color: colors.text },
-  city: { fontSize: 13, color: colors.muted },
+  info: { flex: 1, marginLeft: 12, gap: 6 },
+  name: { fontSize: 17, fontWeight: '700', color: colors.text },
+  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  city: { fontSize: 13, color: colors.muted, flexShrink: 1 },
 });

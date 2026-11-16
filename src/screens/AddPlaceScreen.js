@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Image,
   TouchableOpacity,
   ScrollView,
@@ -10,11 +9,13 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
+import Field from '../components/Field';
 import { usePlaces } from '../context/PlacesContext';
-import { colors, STATUS } from '../theme/colors';
+import { colors, STATUS, statusColor, statusIcon, shadow } from '../theme/colors';
 
 // Tela 2: cadastro (e edição, quando recebe params.id) de lugar
 export default function AddPlaceScreen({ navigation, route }) {
@@ -114,65 +115,95 @@ export default function AddPlaceScreen({ navigation, route }) {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ padding: 16 }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.label}>Nome</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Ex.: Cristo Redentor" />
-
-      <Text style={styles.label}>Descrição</Text>
-      <TextInput
-        style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        placeholder="Por que quer conhecer / como foi"
-      />
-
-      <Text style={styles.label}>Rua</Text>
-      <TextInput style={styles.input} value={street} onChangeText={setStreet} />
-
-      <Text style={styles.label}>Número</Text>
-      <TextInput style={styles.input} value={number} onChangeText={setNumber} keyboardType="numeric" />
-
-      <Text style={styles.label}>Cidade</Text>
-      <TextInput style={styles.input} value={city} onChangeText={setCity} />
-
-      <Text style={styles.label}>Estado (UF)</Text>
-      <TextInput
-        style={styles.input}
-        value={state}
-        onChangeText={setState}
-        maxLength={2}
-        autoCapitalize="characters"
-      />
-
-      <Text style={styles.label}>Status</Text>
-      <View style={styles.row}>
-        {[STATUS.WANT, STATUS.VISITED].map((s) => (
-          <TouchableOpacity
-            key={s}
-            style={[styles.statusBtn, status === s && styles.statusBtnActive]}
-            onPress={() => setStatus(s)}
-          >
-            <Text style={[styles.statusText, status === s && { color: '#fff' }]}>{s}</Text>
+      {/* Foto */}
+      <View style={styles.card}>
+        <Text style={styles.section}>Foto</Text>
+        {photo ? (
+          <Image source={{ uri: photo }} style={styles.preview} />
+        ) : (
+          <View style={[styles.preview, styles.noPhoto]}>
+            <Ionicons name="image-outline" size={40} color={colors.primary} />
+            <Text style={styles.noPhotoText}>Nenhuma foto selecionada</Text>
+          </View>
+        )}
+        <View style={styles.row}>
+          <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
+            <Ionicons name="camera" size={18} color={colors.primary} />
+            <Text style={styles.photoBtnText}>Tirar foto</Text>
           </TouchableOpacity>
-        ))}
+          <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto}>
+            <Ionicons name="images" size={18} color={colors.primary} />
+            <Text style={styles.photoBtnText}>Galeria</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <Text style={styles.label}>Foto</Text>
-      {photo && <Image source={{ uri: photo }} style={styles.preview} />}
-      <View style={styles.row}>
-        <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
-          <Text style={styles.photoBtnText}>Tirar foto</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto}>
-          <Text style={styles.photoBtnText}>Escolher da galeria</Text>
-        </TouchableOpacity>
+      {/* Dados do lugar */}
+      <View style={styles.card}>
+        <Text style={styles.section}>Sobre o lugar</Text>
+        <Field label="Nome" icon="flag-outline" value={name} onChangeText={setName} placeholder="Ex.: Cristo Redentor" />
+        <Field
+          label="Descrição"
+          icon="create-outline"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          placeholder="Por que quer conhecer / como foi"
+        />
+
+        <Text style={[styles.label, { marginTop: 14 }]}>Status</Text>
+        <View style={styles.row}>
+          {[STATUS.WANT, STATUS.VISITED].map((s) => {
+            const active = status === s;
+            return (
+              <TouchableOpacity
+                key={s}
+                style={[
+                  styles.statusBtn,
+                  { borderColor: statusColor(s) },
+                  active && { backgroundColor: statusColor(s) },
+                ]}
+                onPress={() => setStatus(s)}
+              >
+                <Ionicons name={statusIcon(s)} size={16} color={active ? '#fff' : statusColor(s)} />
+                <Text style={[styles.statusText, { color: active ? '#fff' : statusColor(s) }]}>{s}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
-      <TouchableOpacity style={styles.saveBtn} onPress={save} disabled={saving}>
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Salvar</Text>}
+      {/* Endereço */}
+      <View style={styles.card}>
+        <Text style={styles.section}>Endereço</Text>
+        <Field label="Rua" icon="trail-sign-outline" value={street} onChangeText={setStreet} />
+        <View style={styles.row}>
+          <Field style={{ flex: 1 }} label="Número" icon="keypad-outline" value={number} onChangeText={setNumber} keyboardType="numeric" />
+          <Field
+            style={{ flex: 1 }}
+            label="UF"
+            icon="map-outline"
+            value={state}
+            onChangeText={setState}
+            maxLength={2}
+            autoCapitalize="characters"
+          />
+        </View>
+        <Field label="Cidade" icon="business-outline" value={city} onChangeText={setCity} />
+      </View>
+
+      <TouchableOpacity style={styles.saveBtn} onPress={save} disabled={saving} activeOpacity={0.85}>
+        {saving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="checkmark-circle" size={22} color="#fff" />
+            <Text style={styles.saveText}>{editing ? 'Salvar alterações' : 'Salvar lugar'}</Text>
+          </>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -180,29 +211,44 @@ export default function AddPlaceScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  label: { fontWeight: '600', marginTop: 12, marginBottom: 4, color: colors.text },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d0d5db',
-    padding: 10,
-    fontSize: 15,
-  },
+  card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 14, ...shadow },
+  section: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
+  label: { fontSize: 13, fontWeight: '600', color: colors.muted, marginBottom: 5 },
   row: { flexDirection: 'row', gap: 10 },
+  preview: { width: '100%', height: 190, borderRadius: 12, marginVertical: 12 },
+  noPhoto: { backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  noPhotoText: { color: colors.muted, fontSize: 13 },
+  photoBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: colors.primarySoft,
+  },
+  photoBtnText: { color: colors.primary, fontWeight: '700' },
   statusBtn: {
     flex: 1,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: 11,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
-  statusBtnActive: { backgroundColor: colors.primary },
-  statusText: { color: colors.primary, fontWeight: '600' },
-  preview: { width: '100%', height: 200, borderRadius: 10, marginBottom: 10 },
-  photoBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#e3eefb', alignItems: 'center' },
-  photoBtnText: { color: colors.primary, fontWeight: '600' },
-  saveBtn: { marginTop: 24, backgroundColor: colors.primary, padding: 14, borderRadius: 8, alignItems: 'center' },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  statusText: { fontWeight: '700', fontSize: 13 },
+  saveBtn: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    padding: 16,
+    borderRadius: 14,
+    ...shadow,
+  },
+  saveText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });
