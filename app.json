@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "DiarioViagens",
+    "slug": "DiarioViagens",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Usamos sua localização para mostrá-la no mapa.",
+        "NSCameraUsageDescription": "Usamos a câmera para fotografar os lugares.",
+        "NSPhotoLibraryUsageDescription": "Usamos a galeria para escolher fotos dos lugares.",
+        "NSPhotoLibraryAddUsageDescription": "Salvamos as fotos tiradas na sua galeria."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
