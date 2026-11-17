@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,17 +8,21 @@ import {
   Alert,
   ActivityIndicator,
   StyleSheet,
+  Keyboard,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import Field from '../components/Field';
 import { usePlaces } from '../context/PlacesContext';
 import { colors, STATUS, statusColor, statusIcon, shadow } from '../theme/colors';
 
 // Tela 2: cadastro (e edição, quando recebe params.id) de lugar
 export default function AddPlaceScreen({ navigation, route }) {
+  const scrollRef = useRef(null);
+  const scrollOffset = useRef(0);
   const { places, addPlace, updatePlace } = usePlaces();
   const editing = places.find((p) => p.id === route.params?.id);
 
@@ -31,6 +35,42 @@ export default function AddPlaceScreen({ navigation, route }) {
   const [status, setStatus] = useState(editing?.status ?? STATUS.WANT);
   const [photo, setPhoto] = useState(editing?.photo ?? null);
   const [saving, setSaving] = useState(false);
+  const [keyboardSpace, setKeyboardSpace] = useState(0);
+
+  const showFocusedField = () => {
+    const input = TextInput.State.currentlyFocusedInput();
+    const scrollView = scrollRef.current?.getNativeScrollRef();
+    if (!input || !scrollView) return;
+
+    scrollView.measureInWindow((x, top, width, height) => {
+      input.measureInWindow((inputX, inputTop, inputWidth, inputHeight) => {
+        const keyboardTop = Keyboard.metrics()?.screenY ?? top + height;
+        const visibleBottom = Math.min(top + height, keyboardTop);
+        const targetCenter = top + (visibleBottom - top) / 2;
+        const inputCenter = inputTop + inputHeight / 2;
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, scrollOffset.current + inputCenter - targetCenter),
+          animated: true,
+        });
+      });
+    });
+  };
+
+  useEffect(() => {
+    const listener = Keyboard.addListener('keyboardDidShow', (event) => {
+      setKeyboardSpace(event.endCoordinates.height / 2);
+      requestAnimationFrame(showFocusedField);
+    });
+    const hideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardSpace(0));
+    return () => {
+      listener.remove();
+      hideListener.remove();
+    };
+  }, []);
+
+  const handleFieldFocus = () => {
+    requestAnimationFrame(showFocusedField);
+  };
 
   // Tira a foto na hora e salva na galeria do dispositivo
   const takePhoto = async () => {
@@ -77,6 +117,12 @@ export default function AddPlaceScreen({ navigation, route }) {
     }
     setSaving(true);
     try {
+      // No Android, a permissão é necessária antes da conversão do endereço.
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permissão negada', 'Permita o acesso à localização para localizar o endereço e salvar o lugar.');
+        return;
+      }
       // Endereço -> latitude/longitude
       const fullAddress = `${street}, ${number}, ${city}, ${state}, Brasil`;
       const results = await Location.geocodeAsync(fullAddress);
@@ -114,9 +160,16 @@ export default function AddPlaceScreen({ navigation, route }) {
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={styles.container}
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 + keyboardSpace }}
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
+      onScroll={(event) => { scrollOffset.current = event.nativeEvent.contentOffset.y; }}
+      scrollEventThrottle={16}
+      onContentSizeChange={() => {
+        if (Keyboard.isVisible()) requestAnimationFrame(showFocusedField);
+      }}
     >
       {/* Foto */}
       <View style={styles.card}>
@@ -144,12 +197,13 @@ export default function AddPlaceScreen({ navigation, route }) {
       {/* Dados do lugar */}
       <View style={styles.card}>
         <Text style={styles.section}>Sobre o lugar</Text>
-        <Field label="Nome" icon="flag-outline" value={name} onChangeText={setName} placeholder="Ex.: Cristo Redentor" />
+        <Field label="Nome" icon="flag-outline" value={name} onChangeText={setName} onFocus={handleFieldFocus} placeholder="Ex.: Cristo Redentor" />
         <Field
           label="Descrição"
           icon="create-outline"
           value={description}
           onChangeText={setDescription}
+          onFocus={handleFieldFocus}
           multiline
           placeholder="Por que quer conhecer / como foi"
         />
@@ -179,20 +233,21 @@ export default function AddPlaceScreen({ navigation, route }) {
       {/* Endereço */}
       <View style={styles.card}>
         <Text style={styles.section}>Endereço</Text>
-        <Field label="Rua" icon="trail-sign-outline" value={street} onChangeText={setStreet} />
+        <Field label="Rua" icon="trail-sign-outline" value={street} onChangeText={setStreet} onFocus={handleFieldFocus} />
         <View style={styles.row}>
-          <Field style={{ flex: 1 }} label="Número" icon="keypad-outline" value={number} onChangeText={setNumber} keyboardType="numeric" />
+          <Field style={{ flex: 1 }} label="Número" icon="keypad-outline" value={number} onChangeText={setNumber} onFocus={handleFieldFocus} keyboardType="numeric" />
           <Field
             style={{ flex: 1 }}
             label="UF"
             icon="map-outline"
             value={state}
             onChangeText={setState}
+            onFocus={handleFieldFocus}
             maxLength={2}
             autoCapitalize="characters"
           />
         </View>
-        <Field label="Cidade" icon="business-outline" value={city} onChangeText={setCity} />
+        <Field label="Cidade" icon="business-outline" value={city} onChangeText={setCity} onFocus={handleFieldFocus} />
       </View>
 
       <TouchableOpacity style={styles.saveBtn} onPress={save} disabled={saving} activeOpacity={0.85}>
