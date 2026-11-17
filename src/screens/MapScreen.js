@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
@@ -10,6 +10,16 @@ import { colors, STATUS, statusColor, shadow } from '../theme/colors';
 export default function MapScreen({ navigation }) {
   const { places } = usePlaces();
   const { location, errorMsg } = useLocation();
+  const mapRef = useRef(null);
+  const [mapReady, setMapReady] = useState(false);
+  const centeredOnLocation = useRef(false);
+
+  useEffect(() => {
+    if (mapReady && location && !centeredOnLocation.current && mapRef.current) {
+      mapRef.current.animateToRegion({ ...location, latitudeDelta: 0.5, longitudeDelta: 0.5 });
+      centeredOnLocation.current = true;
+    }
+  }, [location, mapReady]);
 
   // Centro inicial: usuário > primeiro lugar > centro do Brasil
   const center =
@@ -20,16 +30,16 @@ export default function MapScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <MapView style={styles.map} initialRegion={region}>
+      <MapView ref={mapRef} style={styles.map} initialRegion={region} onMapReady={() => setMapReady(true)}>
         {location && <Marker coordinate={location} title="Você está aqui" pinColor="#2563EB" />}
         {places.map((p) => (
           <Marker
             key={p.id}
             coordinate={{ latitude: p.latitude, longitude: p.longitude }}
             title={p.name}
-            description={`${p.status} · toque para ver detalhes`}
+            description={p.status}
             pinColor={statusColor(p.status)}
-            onCalloutPress={() => navigation.navigate('Detalhes', { id: p.id })}
+            onPress={() => navigation.navigate('Detalhes', { id: p.id })}
           />
         ))}
       </MapView>

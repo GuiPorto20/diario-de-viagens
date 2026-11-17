@@ -14,7 +14,7 @@ Projeto do 2º bimestre de Programação para Dispositivos Móveis I, FATEC Fran
 - **Lista de lugares**: miniatura da foto, nome, cidade e status; botão para adicionar.
 - **Cadastro**: nome, descrição, rua, número, cidade, estado, status e foto (câmera ou galeria). O endereço é convertido em latitude/longitude com `Location.geocodeAsync`; se não for encontrado, o app avisa e não salva.
 - **Detalhes**: todos os dados, foto, mini mapa, editar, marcar como Visitado e remover.
-- **Mapa**: marcador com o nome de cada lugar e a localização atual (hook `useLocation`). Tocar no balão do marcador abre os detalhes.
+- **Mapa**: marcador com o nome de cada lugar e a localização atual (hook `useLocation`). Tocar no marcador abre os detalhes.
 - **Estatísticas**: gráfico de pizza por status (com legenda) e gráfico de barras por cidade, calculados a partir dos lugares cadastrados.
 - Fotos tiradas na câmera são salvas na galeria do dispositivo.
 

@@ -55,6 +55,7 @@ export default function PlaceDetailsScreen({ navigation, route }) {
 
         <View style={[styles.card, { padding: 0, overflow: 'hidden' }]}>
           <MapView
+            key={`${place.latitude},${place.longitude}`}
             style={styles.map}
             initialRegion={{
               latitude: place.latitude,
