@@ -1,11 +1,9 @@
 import React, { useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PieChart, BarChart } from 'react-native-svg-charts';
+import { PieChart } from 'react-native-svg-charts';
 import { usePlaces } from '../context/PlacesContext';
 import { colors, STATUS, shadow } from '../theme/colors';
-
-const CITY_COLORS = ['#0E7C86', '#7C3AED', '#F97316', '#DB2777', '#2563EB', '#65A30D', '#B45309'];
 
 // Tela 5: gráficos calculados a partir dos lugares cadastrados (sem valores fixos)
 export default function StatsScreen() {
@@ -21,17 +19,21 @@ export default function StatsScreen() {
     [places]
   );
 
-  // Quantidade por cidade
+  // Agrupa variações de caixa e espaços, mantendo cidades de estados diferentes separadas.
   const cityData = useMemo(() => {
-    const counts = {};
-    places.forEach((p) => {
-      counts[p.city] = (counts[p.city] || 0) + 1;
+    const counts = new Map();
+    places.forEach((place) => {
+      const city = (place.city || '').trim().replace(/\s+/g, ' ');
+      const state = (place.state || '').trim().toUpperCase();
+      const label = city ? `${city}${state ? ` - ${state}` : ''}` : 'Cidade não informada';
+      const key = `${city.toLocaleLowerCase('pt-BR')}|${state}`;
+      const entry = counts.get(key);
+      if (entry) entry.value += 1;
+      else counts.set(key, { label, value: 1 });
     });
-    return Object.entries(counts).map(([label, value], i) => ({
-      label,
-      value,
-      color: CITY_COLORS[i % CITY_COLORS.length],
-    }));
+    return Array.from(counts.values()).sort(
+      (a, b) => b.value - a.value || a.label.localeCompare(b.label, 'pt-BR')
+    );
   }, [places]);
 
   if (places.length === 0) {
@@ -50,11 +52,15 @@ export default function StatsScreen() {
     .filter((s) => s.value > 0)
     .map((s) => ({ key: s.label, value: s.value, svg: { fill: s.color } }));
 
-  const barData = cityData.map((c) => ({ value: c.value, svg: { fill: c.color } }));
+  const maxCityCount = cityData[0].value;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
-      {/* Resumo */}
+      <View style={styles.intro}>
+        <Text style={styles.eyebrow}>SEU DIÁRIO EM NÚMEROS</Text>
+        <Text style={styles.heading}>Suas viagens</Text>
+        <Text style={styles.introText}>Um panorama dos lugares que fazem parte da sua história.</Text>
+      </View>
       <View style={styles.tiles}>
         <Tile icon="earth" label="Total" value={places.length} color={colors.primary} />
         <Tile icon="checkmark-circle" label="Visitados" value={statusData[1].value} color={colors.visited} />
@@ -62,36 +68,51 @@ export default function StatsScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.title}>Lugares por status</Text>
-        <PieChart style={{ height: 210, marginTop: 8 }} data={pieData} innerRadius="40%" />
+        <View style={styles.cardHeader}>
+          <View style={styles.cardIcon}><Ionicons name="pie-chart-outline" size={20} color={colors.primary} /></View>
+          <View style={styles.cardHeading}>
+            <Text style={styles.title}>Lugares por status</Text>
+            <Text style={styles.subtitle}>Seus planos e conquistas</Text>
+          </View>
+        </View>
+        <View style={styles.chartContainer}>
+          <PieChart style={styles.chart} data={pieData} innerRadius="68%" outerRadius="96%" />
+        </View>
+        <Text style={styles.chartCaption}>
+          {places.length} {places.length === 1 ? 'lugar cadastrado' : 'lugares cadastrados'}
+        </Text>
         <View style={styles.legend}>
           {statusData.map((s) => (
             <View key={s.label} style={styles.legendRow}>
               <View style={[styles.dot, { backgroundColor: s.color }]} />
               <Text style={styles.legendText}>{s.label}</Text>
-              <Text style={styles.legendValue}>{s.value}</Text>
+              <View style={styles.legendNumbers}>
+                <Text style={styles.legendValue}>{s.value}</Text>
+                <Text style={styles.percentage}>{Math.round((s.value / places.length) * 100)}%</Text>
+              </View>
             </View>
           ))}
         </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.title}>Lugares por cidade</Text>
-        <BarChart
-          style={{ height: 190, marginTop: 8 }}
-          data={barData}
-          yAccessor={({ item }) => item.value}
-          svg={{ fill: colors.primary }}
-          contentInset={{ top: 10, bottom: 10 }}
-          spacingInner={0.35}
-          gridMin={0}
-        />
-        <View style={styles.legend}>
-          {cityData.map((c) => (
-            <View key={c.label} style={styles.legendRow}>
-              <View style={[styles.dot, { backgroundColor: c.color }]} />
-              <Text style={styles.legendText}>{c.label}</Text>
-              <Text style={styles.legendValue}>{c.value}</Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardIcon}><Ionicons name="location-outline" size={20} color={colors.primary} /></View>
+          <View style={styles.cardHeading}>
+            <Text style={styles.title}>Lugares por cidade</Text>
+            <Text style={styles.subtitle}>Onde estão seus destinos</Text>
+          </View>
+        </View>
+        <View style={styles.cityList}>
+          {cityData.map((city) => (
+            <View key={city.label} style={styles.cityRow}>
+              <View style={styles.cityHeading}>
+                <Text style={styles.cityLabel}>{city.label}</Text>
+                <Text style={styles.legendValue}>{city.value}</Text>
+              </View>
+              <View style={styles.barTrack}>
+                <View style={[styles.barFill, { width: `${(city.value / maxCityCount) * 100}%` }]} />
+              </View>
             </View>
           ))}
         </View>
@@ -104,7 +125,7 @@ export default function StatsScreen() {
 function Tile({ icon, label, value, color }) {
   return (
     <View style={styles.tile}>
-      <Ionicons name={icon} size={22} color={color} />
+      <View style={[styles.tileIcon, { backgroundColor: `${color}18` }]}><Ionicons name={icon} size={19} color={color} /></View>
       <Text style={styles.tileValue}>{value}</Text>
       <Text style={styles.tileLabel}>{label}</Text>
     </View>
@@ -113,24 +134,45 @@ function Tile({ icon, label, value, color }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  intro: { marginBottom: 20, paddingHorizontal: 2 },
+  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.3, color: colors.primary },
+  heading: { fontSize: 26, fontWeight: '800', color: colors.text, marginTop: 5 },
+  introText: { fontSize: 14, lineHeight: 20, color: colors.muted, marginTop: 4 },
   tiles: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   tile: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: 16,
-    padding: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     alignItems: 'center',
     gap: 2,
     ...shadow,
   },
+  tileIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   tileValue: { fontSize: 26, fontWeight: '800', color: colors.text },
-  tileLabel: { fontSize: 12, color: colors.muted, fontWeight: '600' },
+  tileLabel: { fontSize: 12, color: colors.muted, fontWeight: '600', textAlign: 'center' },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 14, ...shadow },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cardIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  cardHeading: { flex: 1 },
+  chartContainer: { height: 210, marginTop: 18, justifyContent: 'center' },
+  chart: { height: 210 },
+  chartCaption: { fontSize: 13, fontWeight: '600', color: colors.muted, textAlign: 'center', marginTop: 8 },
   title: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
-  legend: { marginTop: 12, gap: 4 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  subtitle: { fontSize: 13, color: colors.muted, marginTop: 4 },
+  cityList: { marginTop: 20, gap: 16 },
+  cityRow: { gap: 8 },
+  cityHeading: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cityLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
+  barTrack: { height: 10, borderRadius: 5, backgroundColor: colors.primarySoft, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 5, backgroundColor: colors.primary },
+  legend: { marginTop: 16, gap: 4 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
+  legendNumbers: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  percentage: { minWidth: 44, textAlign: 'right', fontSize: 13, color: colors.muted, fontWeight: '600' },
   dot: { width: 14, height: 14, borderRadius: 7, marginRight: 10 },
-  legendText: { flex: 1, fontSize: 15, color: colors.text },
+  legendText: { flex: 1, flexShrink: 1, marginRight: 10, fontSize: 15, color: colors.text },
   legendValue: { fontSize: 15, fontWeight: '800', color: colors.text },
   emptyBox: { flex: 1, backgroundColor: colors.background, alignItems: 'center', paddingTop: 80 },
   emptyIcon: {
